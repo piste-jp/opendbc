@@ -211,6 +211,7 @@ struct CarState {
 
   # gear
   gearShifter @14 :GearShifter;
+  gearStep @61 :Int8;  # current transmission gear (1..N), -1 if unknown
 
   # button presses
   buttonEvents @11 :List(ButtonEvent);

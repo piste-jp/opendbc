@@ -42,6 +42,10 @@ class CarState(CarStateBase):
     can_gear = int(cp.vl["GEAR"]["GEAR"])
     ret.gearShifter = self.parse_gear_shifter(self.shifter_values.get(can_gear, None))
 
+    # GEAR_BOX: 0=P, 14=R, 1..6=current AT gear, 15=shifting
+    gear_box = int(cp.vl["GEAR"]["GEAR_BOX"])
+    ret.gearStep = gear_box if 1 <= gear_box <= 6 else -1
+
     ret.genericToggle = bool(cp.vl["BLINK_INFO"]["HIGH_BEAMS"])
     ret.leftBlindspot = cp.vl["BSM"]["LEFT_BS_STATUS"] != 0
     ret.rightBlindspot = cp.vl["BSM"]["RIGHT_BS_STATUS"] != 0
