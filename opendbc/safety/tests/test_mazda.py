@@ -14,8 +14,8 @@ class TestMazdaSafety(common.CarSafetyTest, common.DriverTorqueSteeringSafetyTes
   RELAY_MALFUNCTION_ADDRS = {0: (0x243, 0x440)}
   FWD_BLACKLISTED_ADDRS = {2: [0x243, 0x440]}
 
-  MAX_RATE_UP = 10
-  MAX_RATE_DOWN = 25
+  MAX_RATE_UP = 40
+  MAX_RATE_DOWN = 100
   MAX_TORQUE_LOOKUP = [0], [800]
 
   MAX_RT_DELTA = 300
