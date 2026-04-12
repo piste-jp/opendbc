@@ -53,10 +53,10 @@ class CarController(CarControllerBase):
       steer_required = steer_required and CS.lkas_allowed_speed
       can_sends.append(mazdacan.create_alert_command(self.packer, CS.cam_laneinfo, ldw, steer_required))
 
-    # send steering command at 25Hz (stock camera sends at ~15.5Hz)
-    if self.frame % 4 == 0:
+    # send steering command at ~16.7Hz (stock camera sends at ~15.5Hz)
+    if self.frame % 6 == 0:
       can_sends.append(mazdacan.create_steering_control(self.packer, self.CP,
-                                                        self.frame // 4, apply_torque, CS.cam_lkas))
+                                                        self.frame // 6, apply_torque, CS.cam_lkas))
 
     new_actuators = CC.actuators.as_builder()
     new_actuators.torque = apply_torque / CarControllerParams.STEER_MAX
