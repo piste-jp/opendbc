@@ -49,12 +49,8 @@ static void mazda_rx_hook(const CANPacket_t *msg) {
 static bool mazda_tx_hook(const CANPacket_t *msg) {
   const TorqueSteeringLimits MAZDA_STEERING_LIMITS = {
     .max_torque = 800,
-    // Mazda6 requires CAM_LKAS at ~20Hz (stock camera sends at ~15.5Hz).
-    // Sending at 100Hz triggers the car's "camera sensor system error" warning.
-    // With 20Hz send rate (frame % 5), rate limits must be 5x larger to
-    // maintain the same torque change per second (100Hz / 20Hz = 5x).
-    .max_rate_up = 50,      // stock: 10
-    .max_rate_down = 125,   // stock: 25
+    .max_rate_up = 10,
+    .max_rate_down = 25,
     .max_rt_delta = 300,
     .driver_torque_multiplier = 1,
     .driver_torque_allowance = 15,
