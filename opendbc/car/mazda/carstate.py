@@ -17,6 +17,7 @@ class CarState(CarStateBase):
     self.crz_btns_counter = 0
     self.acc_active_last = False
     self.lkas_allowed_speed = False
+    self.cts_active = False
 
     self.distance_button = 0
     self.accel_button = 0
@@ -89,6 +90,9 @@ class CarState(CarStateBase):
     ret.cruiseState.enabled = cp.vl["CRZ_CTRL"]["CRZ_ACTIVE"] == 1
     ret.cruiseState.standstill = cp.vl["PEDALS"]["STANDSTILL"] == 1
     ret.cruiseState.speed = cp.vl["CRZ_EVENTS"]["CRZ_SPEED"] * CV.KPH_TO_MS
+
+    # CTS mode indicator: MSG_10 (0x4f3) byte[5] bit 4. Active in CTS mode only, not MRCC.
+    self.cts_active = cp.vl["MSG_10"]["CTS_ACTIVE"] == 1
 
     # stock lkas should be on
     # TODO: is this needed?

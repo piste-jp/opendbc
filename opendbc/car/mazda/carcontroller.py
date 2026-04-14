@@ -50,10 +50,11 @@ class CarController(CarControllerBase):
         can_sends.append(mazdacan.create_button_cmd(self.packer, self.CP, CS.crz_btns_counter, Buttons.RESUME))
 
       # Adjust MRCC set speed to match openpilot's target speed.
+      # Only in CTS mode — in MRCC mode openpilot lateral control causes stock camera errors.
       # MRCC follows the lead car, so set speed slightly above target to let it track.
       # Target MRCC speed = ceil((target + 6) / 5) * 5
       # MRCC snaps to multiples of 5, so SET_P from e.g. 62 goes to 65 (ceil to next 5).
-      elif CC.enabled and CS.out.cruiseState.enabled and CS.out.cruiseState.speed > 0 and self.frame % 10 == 0:
+      elif CC.enabled and CS.out.cruiseState.enabled and CS.cts_active and CS.out.cruiseState.speed > 0 and self.frame % 10 == 0:
         target_speed_kph = CC.hudControl.setSpeed * CV.MS_TO_KPH
         desired_mrcc_kph = min(120, max(30, math.ceil((target_speed_kph + 6) / SPEED_STEP_KPH) * SPEED_STEP_KPH))
         # MRCC set speed snaps to multiples of 5, so round current to nearest 5 for comparison
