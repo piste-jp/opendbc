@@ -1,11 +1,17 @@
+import math
+
 from opendbc.can import CANPacker
 from opendbc.car import Bus, structs
+from opendbc.car.common.conversions import Conversions as CV
 from opendbc.car.lateral import apply_driver_steer_torque_limits
 from opendbc.car.interfaces import CarControllerBase
 from opendbc.car.mazda import mazdacan
 from opendbc.car.mazda.values import CarControllerParams, Buttons
 
 VisualAlert = structs.CarControl.HUDControl.VisualAlert
+
+# MRCC speed adjustment step in kph
+SPEED_STEP_KPH = 5
 
 
 class CarController(CarControllerBase):
@@ -42,6 +48,21 @@ class CarController(CarControllerBase):
         # Mazda Stop and Go requires a RES button (or gas) press if the car stops more than 3 seconds
         # Send Resume button when planner wants car to move
         can_sends.append(mazdacan.create_button_cmd(self.packer, self.CP, CS.crz_btns_counter, Buttons.RESUME))
+
+      # Adjust MRCC set speed to match openpilot's target speed.
+      # MRCC follows the lead car, so set speed slightly above target to let it track.
+      # Target MRCC speed = ceil((target + 6) / 5) * 5
+      # MRCC snaps to multiples of 5, so SET_P from e.g. 62 goes to 65 (ceil to next 5).
+      elif CC.enabled and CS.out.cruiseState.enabled and CS.out.cruiseState.speed > 0 and self.frame % 10 == 0:
+        target_speed_kph = CC.hudControl.setSpeed * CV.MS_TO_KPH
+        desired_mrcc_kph = min(120, max(30, math.ceil((target_speed_kph + 6) / SPEED_STEP_KPH) * SPEED_STEP_KPH))
+        # MRCC set speed snaps to multiples of 5, so round current to nearest 5 for comparison
+        current_mrcc_kph = round(CS.out.cruiseState.speed * CV.MS_TO_KPH / SPEED_STEP_KPH) * SPEED_STEP_KPH
+
+        if desired_mrcc_kph > current_mrcc_kph:
+          can_sends.append(mazdacan.create_button_cmd(self.packer, self.CP, CS.crz_btns_counter, Buttons.SET_PLUS))
+        elif desired_mrcc_kph < current_mrcc_kph:
+          can_sends.append(mazdacan.create_button_cmd(self.packer, self.CP, CS.crz_btns_counter, Buttons.SET_MINUS))
 
     self.apply_torque_last = apply_torque
 

@@ -94,20 +94,22 @@ def create_button_cmd(packer, CP, counter, button):
 
   can = int(button == Buttons.CANCEL)
   res = int(button == Buttons.RESUME)
+  set_p = int(button == Buttons.SET_PLUS)
+  set_m = int(button == Buttons.SET_MINUS)
 
   if CP.flags & MazdaFlags.GEN1:
     values = {
       "CAN_OFF": can,
       "CAN_OFF_INV": (can + 1) % 2,
 
-      "SET_P": 0,
-      "SET_P_INV": 1,
+      "SET_P": set_p,
+      "SET_P_INV": (set_p + 1) % 2,
 
       "RES": res,
       "RES_INV": (res + 1) % 2,
 
-      "SET_M": 0,
-      "SET_M_INV": 1,
+      "SET_M": set_m,
+      "SET_M_INV": (set_m + 1) % 2,
 
       "DISTANCE_LESS": 0,
       "DISTANCE_LESS_INV": 1,
