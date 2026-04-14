@@ -96,6 +96,8 @@ def create_button_cmd(packer, CP, counter, button):
   res = int(button == Buttons.RESUME)
   set_p = int(button == Buttons.SET_PLUS)
   set_m = int(button == Buttons.SET_MINUS)
+  mrcc = int(button == Buttons.MRCC)
+  cts = int(button == Buttons.CTS)
 
   if CP.flags & MazdaFlags.GEN1:
     values = {
@@ -117,13 +119,11 @@ def create_button_cmd(packer, CP, counter, button):
       "DISTANCE_MORE": 0,
       "DISTANCE_MORE_INV": 1,
 
-      "MODE_X": 0,
-      "MODE_X_INV": 1,
+      "MRCC_BUTTON": mrcc,
+      "MRCC_BUTTON_INV": (mrcc + 1) % 2,
 
-      "MODE_Y": 0,
-      "MODE_Y_INV": 1,
+      "CTS_BUTTON": cts,
 
-      "BIT1": 1,
       "BIT2": 1,
       "BIT3": 1,
       "CTR": (counter + 1) % 16,

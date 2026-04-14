@@ -18,6 +18,8 @@ class CarState(CarStateBase):
     self.acc_active_last = False
     self.lkas_allowed_speed = False
     self.cts_active = False
+    self.mrcc_button = 0
+    self.cts_button = 0
 
     self.distance_button = 0
     self.accel_button = 0
@@ -114,6 +116,8 @@ class CarState(CarStateBase):
     self.acc_active_last = ret.cruiseState.enabled
 
     self.crz_btns_counter = cp.vl["CRZ_BTNS"]["CTR"]
+    self.mrcc_button = cp.vl["CRZ_BTNS"]["MRCC_BUTTON"]
+    self.cts_button = cp.vl["CRZ_BTNS"]["CTS_BUTTON"]
 
     # camera signals
     self.cam_lkas = cp_cam.vl["CAM_LKAS"]

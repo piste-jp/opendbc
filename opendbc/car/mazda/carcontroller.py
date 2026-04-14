@@ -20,9 +20,29 @@ class CarController(CarControllerBase):
     self.apply_torque_last = 0
     self.packer = CANPacker(dbc_names[Bus.pt])
     self.brake_counter = 0
+    # Tracks driver intent to run in MRCC mode. Set when the driver presses
+    # the MRCC button (which we will block at the panda level and redirect to CTS);
+    # cleared when the driver explicitly presses CTS.
+    self.mrcc_mode_requested = False
+    self.prev_mrcc_button = 0
+    self.prev_cts_button = 0
+    self.cts_inject_frames = 0
 
   def update(self, CC, CS, now_nanos):
     can_sends = []
+
+    # Detect MRCC/CTS button rising edges to manage mrcc_mode_requested flag.
+    mrcc_pressed = CS.mrcc_button == 1 and self.prev_mrcc_button == 0
+    cts_pressed = CS.cts_button == 1 and self.prev_cts_button == 0
+    if mrcc_pressed:
+      self.mrcc_mode_requested = True
+      # Inject a CTS button press over the next few frames so the stock camera
+      # enters CTS mode (openpilot lateral control is happy in CTS).
+      self.cts_inject_frames = 5
+    elif cts_pressed:
+      self.mrcc_mode_requested = False
+    self.prev_mrcc_button = CS.mrcc_button
+    self.prev_cts_button = CS.cts_button
 
     apply_torque = 0
 
@@ -49,12 +69,20 @@ class CarController(CarControllerBase):
         # Send Resume button when planner wants car to move
         can_sends.append(mazdacan.create_button_cmd(self.packer, self.CP, CS.crz_btns_counter, Buttons.RESUME))
 
+      elif self.cts_inject_frames > 0 and self.frame % 2 == 0:
+        # Inject CTS button press when the driver pressed MRCC (which we want to redirect to CTS).
+        can_sends.append(mazdacan.create_button_cmd(self.packer, self.CP, CS.crz_btns_counter, Buttons.CTS))
+        self.cts_inject_frames -= 1
+
       # Adjust MRCC set speed to match openpilot's target speed.
-      # Only in CTS mode — in MRCC mode openpilot lateral control causes stock camera errors.
+      # Only when the driver pressed MRCC (we redirected them to CTS and now
+      # provide MRCC-like speed control on top). In real CTS the driver manages
+      # set speed manually, like stock.
       # MRCC follows the lead car, so set speed slightly above target to let it track.
       # Target MRCC speed = ceil((target + 6) / 5) * 5
       # MRCC snaps to multiples of 5, so SET_P from e.g. 62 goes to 65 (ceil to next 5).
-      elif CC.enabled and CS.out.cruiseState.enabled and CS.cts_active and CS.out.cruiseState.speed > 0 and self.frame % 10 == 0:
+      elif (CC.enabled and CS.out.cruiseState.enabled and CS.out.cruiseState.speed > 0
+            and self.mrcc_mode_requested and self.frame % 10 == 0):
         target_speed_kph = CC.hudControl.setSpeed * CV.MS_TO_KPH
         desired_mrcc_kph = min(120, max(30, math.ceil((target_speed_kph + 6) / SPEED_STEP_KPH) * SPEED_STEP_KPH))
         # MRCC set speed snaps to multiples of 5, so round current to nearest 5 for comparison
