@@ -13,6 +13,11 @@ VisualAlert = structs.CarControl.HUDControl.VisualAlert
 # MRCC speed adjustment step in kph
 SPEED_STEP_KPH = 5
 
+# Frames to wait between the driver's MRCC press and the CTS press we inject.
+# Pressing them too close together kept the stock camera in MRCC; ~2s matches
+# how a person physically presses one then the other (100 Hz update rate).
+CTS_INJECT_DELAY_FRAMES = 200
+
 
 class CarController(CarControllerBase):
   def __init__(self, dbc_names, CP):
@@ -26,7 +31,10 @@ class CarController(CarControllerBase):
     self.mrcc_mode_requested = False
     self.prev_mrcc_button = 0
     self.prev_cts_button = 0
-    self.cts_inject_frames = 0
+    # Countdown until we inject the CTS button after a driver MRCC press.
+    # 0 means no pending injection. Positive values count down each frame.
+    self.cts_inject_countdown = 0
+    self.cts_inject_pulses_left = 0
 
   def update(self, CC, CS, now_nanos):
     can_sends = []
@@ -36,13 +44,23 @@ class CarController(CarControllerBase):
     cts_pressed = CS.cts_button == 1 and self.prev_cts_button == 0
     if mrcc_pressed:
       self.mrcc_mode_requested = True
-      # Inject a CTS button press over the next few frames so the stock camera
-      # enters CTS mode (openpilot lateral control is happy in CTS).
-      self.cts_inject_frames = 5
+      # Schedule a CTS button press ~2s after the MRCC press so the stock
+      # camera switches to CTS (openpilot lateral control works in CTS).
+      # Sending CTS too quickly after MRCC kept the camera in MRCC.
+      self.cts_inject_countdown = CTS_INJECT_DELAY_FRAMES
     elif cts_pressed:
       self.mrcc_mode_requested = False
+      # Driver pressed CTS themselves; cancel any pending injection.
+      self.cts_inject_countdown = 0
+      self.cts_inject_pulses_left = 0
     self.prev_mrcc_button = CS.mrcc_button
     self.prev_cts_button = CS.cts_button
+
+    # Tick the inject countdown; when it hits 0, queue a short CTS pulse.
+    if self.cts_inject_countdown > 0:
+      self.cts_inject_countdown -= 1
+      if self.cts_inject_countdown == 0:
+        self.cts_inject_pulses_left = 5
 
     apply_torque = 0
 
@@ -69,10 +87,10 @@ class CarController(CarControllerBase):
         # Send Resume button when planner wants car to move
         can_sends.append(mazdacan.create_button_cmd(self.packer, self.CP, CS.crz_btns_counter, Buttons.RESUME))
 
-      elif self.cts_inject_frames > 0 and self.frame % 2 == 0:
+      elif self.cts_inject_pulses_left > 0 and self.frame % 2 == 0:
         # Inject CTS button press when the driver pressed MRCC (which we want to redirect to CTS).
         can_sends.append(mazdacan.create_button_cmd(self.packer, self.CP, CS.crz_btns_counter, Buttons.CTS))
-        self.cts_inject_frames -= 1
+        self.cts_inject_pulses_left -= 1
 
       # Adjust MRCC set speed to match openpilot's target speed.
       # Only when the driver pressed MRCC (we redirected them to CTS and now
