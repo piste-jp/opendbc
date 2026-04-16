@@ -66,6 +66,11 @@ class CarState(CarStateBase):
     ret.brakePressed = cp.vl["PEDALS"]["BRAKE_ON"] == 1
     ret.brake = cp.vl["BRAKE"]["BRAKE_PRESSURE"]
 
+    # True whenever the brake lamp is on — including CTS/MRCC automatic braking.
+    # PEDALS.BRAKE_ON and BRAKE.BRAKE_PRESSURE are driver-pedal only; TRACTION.BRAKE
+    # is the vehicle-level "brakes are being applied" flag from the ABS/DSC module.
+    ret.brakeLamp = cp.vl["TRACTION"]["BRAKE"] == 1
+
     ret.seatbeltUnlatched = cp.vl["SEATBELT"]["DRIVER_SEATBELT"] == 0
     ret.doorOpen = any([cp.vl["DOORS"]["FL"], cp.vl["DOORS"]["FR"],
                         cp.vl["DOORS"]["BL"], cp.vl["DOORS"]["BR"]])
