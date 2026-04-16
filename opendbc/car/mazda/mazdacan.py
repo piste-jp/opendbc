@@ -124,6 +124,11 @@ def create_button_cmd(packer, CP, counter, button):
 
       "CTS_BUTTON": cts,
 
+      # byte3 bits 6/7 are always set on the real bus. Leaving them cleared
+      # put the stock camera into a bad state that persisted until engine off.
+      "RESERVED_HIGH_1": 1,
+      "RESERVED_HIGH_2": 1,
+
       "BIT2": 1,
       "BIT3": 1,
       "CTR": (counter + 1) % 16,
