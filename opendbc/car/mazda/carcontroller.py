@@ -1,17 +1,11 @@
-import math
-
 from opendbc.can import CANPacker
 from opendbc.car import Bus, structs
-from opendbc.car.common.conversions import Conversions as CV
 from opendbc.car.lateral import apply_driver_steer_torque_limits
 from opendbc.car.interfaces import CarControllerBase
 from opendbc.car.mazda import mazdacan
 from opendbc.car.mazda.values import CarControllerParams, Buttons
 
 VisualAlert = structs.CarControl.HUDControl.VisualAlert
-
-# MRCC speed adjustment step in kph
-SPEED_STEP_KPH = 5
 
 # Frames to wait between the driver's MRCC press and the CTS press we inject.
 # Pressing them too close together kept the stock camera in MRCC; ~2s matches
@@ -25,12 +19,7 @@ class CarController(CarControllerBase):
     self.apply_torque_last = 0
     self.packer = CANPacker(dbc_names[Bus.pt])
     self.brake_counter = 0
-    # Tracks driver intent to run in MRCC mode. Set when the driver presses
-    # the MRCC button (which we will block at the panda level and redirect to CTS);
-    # cleared when the driver explicitly presses CTS.
-    self.mrcc_mode_requested = False
     self.prev_mrcc_button = 0
-    self.prev_cts_button = 0
     # Countdown until we inject the CTS button after a driver MRCC press.
     # 0 means no pending injection. Positive values count down each frame.
     self.cts_inject_countdown = 0
@@ -39,24 +28,17 @@ class CarController(CarControllerBase):
   def update(self, CC, CS, now_nanos):
     can_sends = []
 
-    # Detect MRCC/CTS button rising edges to manage mrcc_mode_requested flag.
+    # When the driver presses MRCC, schedule a CTS press ~2s later so the
+    # stock camera switches to CTS (openpilot lateral control works in CTS,
+    # but causes a stock sensor error in MRCC). After that the driver has
+    # the same experience either way: the stock CTS handles speed and
+    # following, openpilot adds lateral. No openpilot-driven set-speed
+    # adjustment — set speed is whatever the stock system shows.
     mrcc_pressed = CS.mrcc_button == 1 and self.prev_mrcc_button == 0
-    cts_pressed = CS.cts_button == 1 and self.prev_cts_button == 0
     if mrcc_pressed:
-      self.mrcc_mode_requested = True
-      # Schedule a CTS button press ~2s after the MRCC press so the stock
-      # camera switches to CTS (openpilot lateral control works in CTS).
-      # Sending CTS too quickly after MRCC kept the camera in MRCC.
       self.cts_inject_countdown = CTS_INJECT_DELAY_FRAMES
-    elif cts_pressed:
-      self.mrcc_mode_requested = False
-      # Driver pressed CTS themselves; cancel any pending injection.
-      self.cts_inject_countdown = 0
-      self.cts_inject_pulses_left = 0
     self.prev_mrcc_button = CS.mrcc_button
-    self.prev_cts_button = CS.cts_button
 
-    # Tick the inject countdown; when it hits 0, queue a short CTS pulse.
     if self.cts_inject_countdown > 0:
       self.cts_inject_countdown -= 1
       if self.cts_inject_countdown == 0:
@@ -88,28 +70,9 @@ class CarController(CarControllerBase):
         can_sends.append(mazdacan.create_button_cmd(self.packer, self.CP, CS.crz_btns_counter, Buttons.RESUME))
 
       elif self.cts_inject_pulses_left > 0 and self.frame % 2 == 0:
-        # Inject CTS button press when the driver pressed MRCC (which we want to redirect to CTS).
+        # Inject CTS button press scheduled by the MRCC redirect.
         can_sends.append(mazdacan.create_button_cmd(self.packer, self.CP, CS.crz_btns_counter, Buttons.CTS))
         self.cts_inject_pulses_left -= 1
-
-      # Adjust MRCC set speed to match openpilot's target speed.
-      # Only when the driver pressed MRCC (we redirected them to CTS and now
-      # provide MRCC-like speed control on top). In real CTS the driver manages
-      # set speed manually, like stock.
-      # MRCC follows the lead car, so set speed slightly above target to let it track.
-      # Target MRCC speed = ceil((target + 6) / 5) * 5
-      # MRCC snaps to multiples of 5, so SET_P from e.g. 62 goes to 65 (ceil to next 5).
-      elif (CC.enabled and CS.out.cruiseState.enabled and CS.out.cruiseState.speed > 0
-            and self.mrcc_mode_requested and self.frame % 10 == 0):
-        target_speed_kph = CC.hudControl.setSpeed * CV.MS_TO_KPH
-        desired_mrcc_kph = min(120, max(30, math.ceil((target_speed_kph + 6) / SPEED_STEP_KPH) * SPEED_STEP_KPH))
-        # MRCC set speed snaps to multiples of 5, so round current to nearest 5 for comparison
-        current_mrcc_kph = round(CS.out.cruiseState.speed * CV.MS_TO_KPH / SPEED_STEP_KPH) * SPEED_STEP_KPH
-
-        if desired_mrcc_kph > current_mrcc_kph:
-          can_sends.append(mazdacan.create_button_cmd(self.packer, self.CP, CS.crz_btns_counter, Buttons.SET_PLUS))
-        elif desired_mrcc_kph < current_mrcc_kph:
-          can_sends.append(mazdacan.create_button_cmd(self.packer, self.CP, CS.crz_btns_counter, Buttons.SET_MINUS))
 
     self.apply_torque_last = apply_torque
 
