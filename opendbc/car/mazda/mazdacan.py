@@ -75,7 +75,6 @@ def create_alert_command(packer, cam_msg: dict, ldw: bool, steer_required: bool)
     "S1_HBEAM",
     "TJA",
     "TJA_TRANSITION",
-    "HANDS_OFF_WARN",
   ]}
   values.update({
     # TODO: what's the difference between all these? do we need to send all?
