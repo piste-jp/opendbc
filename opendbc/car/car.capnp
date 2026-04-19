@@ -180,6 +180,7 @@ struct CarState {
   brake @5 :Float32;      # this is user pedal only
   brakePressed @6 :Bool;  # this is user pedal only
   brakeLamp @62 :Bool;    # brake lamp is on (driver pedal OR automatic braking by ACC/AEB)
+  mazdaVelocityControlMode @63 :Bool;  # Mazda: MRCC button engaged openpilot velocity control mode
   regenBraking @45 :Bool; # this is user pedal only
   parkingBrake @39 :Bool;
   brakeHoldActive @38 :Bool;

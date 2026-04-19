@@ -20,6 +20,9 @@ class CarState(CarStateBase):
     self.cts_active = False
     self.mrcc_button = 0
     self.cts_button = 0
+    self.prev_mrcc_button = 0
+    self.velocity_control_mode = False
+    self.prev_cruise_enabled = False
 
     self.distance_button = 0
     self.accel_button = 0
@@ -123,6 +126,22 @@ class CarState(CarStateBase):
     self.crz_btns_counter = cp.vl["CRZ_BTNS"]["CTR"]
     self.mrcc_button = cp.vl["CRZ_BTNS"]["MRCC_BUTTON"]
     self.cts_button = cp.vl["CRZ_BTNS"]["CTS_BUTTON"]
+
+    # velocity_control_mode: MRCC button rising edge arms it; cruise disengage clears it.
+    # When engaged, override cruiseState.speed with a fixed cap (110 km/h) so plannerd's
+    # MPC upper bound is independent of CRZ_SPEED (breaks the SET_P feedback loop that
+    # previously ran away — see longtitude-control-mazda6.md). cruiseState.speedCluster
+    # is left untouched so the cluster/HUD MAX reading remains the real CRZ_SPEED.
+    if self.mrcc_button == 1 and self.prev_mrcc_button == 0:
+      self.velocity_control_mode = True
+    if self.prev_cruise_enabled and not ret.cruiseState.enabled:
+      self.velocity_control_mode = False
+    self.prev_mrcc_button = self.mrcc_button
+    self.prev_cruise_enabled = ret.cruiseState.enabled
+
+    if self.velocity_control_mode:
+      ret.cruiseState.speed = 110 * CV.KPH_TO_MS
+    ret.mazdaVelocityControlMode = self.velocity_control_mode
 
     # camera signals
     self.cam_lkas = cp_cam.vl["CAM_LKAS"]
