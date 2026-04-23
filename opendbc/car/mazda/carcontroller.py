@@ -15,11 +15,16 @@ class CarController(CarControllerBase):
     self.packer = CANPacker(dbc_names[Bus.pt])
     self.brake_counter = 0
     self.prev_mrcc_button = 0
+    # Cooldown between SET_P/SET_M injections. CRZ_SPEED needs time to settle after
+    # a press; send too fast and multiple button presses pile up. 1 s @ 100 Hz.
+    self.set_btn_cooldown = 0
 
   def update(self, CC, CS, now_nanos):
     can_sends = []
 
     self.prev_mrcc_button = CS.mrcc_button
+    if self.set_btn_cooldown > 0:
+      self.set_btn_cooldown -= 1
 
     apply_torque = 0
 
@@ -45,6 +50,22 @@ class CarController(CarControllerBase):
         # Mazda Stop and Go requires a RES button (or gas) press if the car stops more than 3 seconds
         # Send Resume button when planner wants car to move
         can_sends.append(mazdacan.create_button_cmd(self.packer, self.CP, CS.crz_btns_counter, Buttons.RESUME))
+
+      # velocity_control_mode: drive the stock ACC set speed toward plannerd's target.
+      # Keep CRZ_SPEED ~3..6 km/h above plan target (the stock ACC stays capable of
+      # accelerating when the lead "lid" lifts). Trigger +5 when the gap closes to 2,
+      # trigger -5 when it opens past 6. cruise_speed_target_kph caps the bound.
+      elif (CS.velocity_control_mode and CS.out.cruiseState.enabled
+            and self.set_btn_cooldown == 0 and CC.mazdaPlanTargetKph > 0):
+        vtarget_kph = min(CC.mazdaPlanTargetKph, CS.cruise_speed_target_kph)
+        crz_kph = CS.out.cruiseState.speedCluster * 3.6
+        diff = crz_kph - vtarget_kph
+        if diff <= 2 and crz_kph < CS.cruise_speed_target_kph:
+          can_sends.append(mazdacan.create_button_cmd(self.packer, self.CP, CS.crz_btns_counter, Buttons.SET_PLUS))
+          self.set_btn_cooldown = 100
+        elif diff >= 7:
+          can_sends.append(mazdacan.create_button_cmd(self.packer, self.CP, CS.crz_btns_counter, Buttons.SET_MINUS))
+          self.set_btn_cooldown = 100
 
     self.apply_torque_last = apply_torque
 

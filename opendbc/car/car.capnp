@@ -362,6 +362,11 @@ struct CarControl {
   cruiseControl @4 :CruiseControl;
   hudControl @5 :HUDControl;
 
+  # Mazda velocity_control_mode: plannerd's 2.5 s horizon target speed, in km/h.
+  # 0 when unavailable. Used by Mazda carcontroller to send SET_P/SET_M so the
+  # stock ACC set speed tracks plannerd's plan.
+  mazdaPlanTargetKph @18 :Float32;
+
   struct Actuators {
     # lateral commands, mutually exclusive
     torque @2: Float32;  # [0.0, 1.0]
