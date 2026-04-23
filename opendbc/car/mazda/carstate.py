@@ -28,6 +28,8 @@ class CarState(CarStateBase):
     self.distance_button = 0
     self.accel_button = 0
     self.decel_button = 0
+    self.set_plus_button = 0
+    self.set_minus_button = 0
 
   def update(self, can_parsers) -> structs.CarState:
     cp = can_parsers[Bus.pt]
@@ -137,9 +139,13 @@ class CarState(CarStateBase):
     prev_distance_button = self.distance_button
     prev_accel_button = self.accel_button
     prev_decel_button = self.decel_button
+    prev_set_plus_button = self.set_plus_button
+    prev_set_minus_button = self.set_minus_button
     self.distance_button = cp.vl["CRZ_BTNS"]["DISTANCE_LESS"]
     self.accel_button = cp.vl["CRZ_BTNS"]["RES"]
     self.decel_button = cp.vl["CRZ_BTNS"]["SET_M"]
+    self.set_plus_button = cp.vl["CRZ_BTNS"]["SET_P"]
+    self.set_minus_button = cp.vl["CRZ_BTNS"]["SET_M"]
 
     ret.buttonEvents = [
       *create_button_events(self.distance_button, prev_distance_button, {1: ButtonType.gapAdjustCruise}),
@@ -164,10 +170,12 @@ class CarState(CarStateBase):
     self.prev_cruise_enabled = ret.cruiseState.enabled
 
     # Adjust target on SET+/SET- rising edges (±5 km/h, clamped 30..120).
+    # Note: self.accel_button reads the RES (resume) bit, not SET_P — SET_P has
+    # its own bit in CRZ_BTNS. Use the dedicated set_plus/minus edges here.
     if self.velocity_control_mode and ret.cruiseState.enabled:
-      if self.accel_button == 1 and prev_accel_button == 0:
+      if self.set_plus_button == 1 and prev_set_plus_button == 0:
         self.cruise_speed_target_kph = min(120.0, self.cruise_speed_target_kph + 5.0)
-      if self.decel_button == 1 and prev_decel_button == 0:
+      if self.set_minus_button == 1 and prev_set_minus_button == 0:
         self.cruise_speed_target_kph = max(30.0, self.cruise_speed_target_kph - 5.0)
       ret.cruiseState.speed = self.cruise_speed_target_kph * CV.KPH_TO_MS
     ret.mazdaVelocityControlMode = self.velocity_control_mode
