@@ -177,6 +177,9 @@ class CarState(CarStateBase):
         self.cruise_speed_target_kph = min(120.0, self.cruise_speed_target_kph + 5.0)
       if self.set_minus_button == 1 and prev_set_minus_button == 0:
         self.cruise_speed_target_kph = max(30.0, self.cruise_speed_target_kph - 5.0)
+      # Pin speedCluster to the real CRZ_SPEED *before* overriding speed, otherwise
+      # CarInterfaceBase fills speedCluster=speed (= our target) when it's still 0.
+      ret.cruiseState.speedCluster = ret.cruiseState.speed
       ret.cruiseState.speed = self.cruise_speed_target_kph * CV.KPH_TO_MS
     ret.mazdaVelocityControlMode = self.velocity_control_mode
 
