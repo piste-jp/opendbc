@@ -55,8 +55,8 @@ class CarController(CarControllerBase):
       # Keep CRZ_SPEED ~3..6 km/h above plan target (the stock ACC stays capable of
       # accelerating when the lead "lid" lifts). Trigger +5 when the gap closes to 2,
       # trigger -5 when it opens past 6. cruise_speed_target_kph caps the bound.
-      elif (CS.velocity_control_mode and CS.out.cruiseState.enabled
-            and self.set_btn_cooldown == 0 and CC.mazdaPlanTargetKph > 0):
+      if (CS.velocity_control_mode and CS.out.cruiseState.enabled
+          and self.set_btn_cooldown == 0 and CC.mazdaPlanTargetKph > 0):
         vtarget_kph = min(CC.mazdaPlanTargetKph, CS.cruise_speed_target_kph)
         crz_kph = CS.out.cruiseState.speedCluster * 3.6
         diff = crz_kph - vtarget_kph

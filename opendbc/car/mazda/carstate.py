@@ -22,7 +22,7 @@ class CarState(CarStateBase):
     self.cts_button = 0
     self.prev_mrcc_button = 0
     self.velocity_control_mode = False
-    self.prev_cruise_enabled = False
+    self.prev_cts_active = False
     self.cruise_speed_target_kph = 0.0
 
     self.distance_button = 0
@@ -153,30 +153,41 @@ class CarState(CarStateBase):
       *create_button_events(self.decel_button, prev_decel_button, {1: ButtonType.decelCruise}),
     ]
 
-    # velocity_control_mode: MRCC button rising edge arms it; cruise disengage clears it.
-    # When armed and cruise is engaged, cruise_speed_target_kph is the driver's upper bound
-    # and overrides cruiseState.speed so plannerd's MPC upper bound is decoupled from
-    # CRZ_SPEED (breaks the SET_P feedback loop that ran away previously — see
-    # longtitude-control-mazda6.md). cruiseState.speedCluster is left untouched so the
-    # cluster/HUD MAX stays on the real CRZ_SPEED.
+    # velocity_control_mode: MRCC button rising edge arms it; CTS-mode exit clears it.
+    # cts_active is the CTS_ACTIVE bit on MSG_10 — it stays True across short brake
+    # interventions that drop cruiseState.enabled, so the driver can resume without
+    # losing the upper bound. The mode clears only when the driver actually leaves
+    # CTS mode (e.g. by pressing CTS to switch back to MRCC, or by turning off ACC).
+    #
+    # While the mode is set, cruise_speed_target_kph overrides cruiseState.speed so
+    # plannerd's MPC upper bound is decoupled from CRZ_SPEED (breaks the SET_P
+    # feedback loop that previously ran away — see longtitude-control-mazda6.md).
+    # speedCluster is pinned to the real CRZ_SPEED so the HUD/cluster reading stays
+    # honest.
     if self.mrcc_button == 1 and self.prev_mrcc_button == 0:
       self.velocity_control_mode = True
-    if self.prev_cruise_enabled and not ret.cruiseState.enabled:
+    if self.prev_cts_active and not self.cts_active:
       self.velocity_control_mode = False
-    # Initialize target to the current CRZ_SPEED on cruise engage rising edge while armed.
-    if self.velocity_control_mode and not self.prev_cruise_enabled and ret.cruiseState.enabled:
+    # Initialize target to the current CRZ_SPEED on CTS-mode rising edge while armed.
+    if self.velocity_control_mode and not self.prev_cts_active and self.cts_active:
       self.cruise_speed_target_kph = ret.cruiseState.speed * CV.MS_TO_KPH
     self.prev_mrcc_button = self.mrcc_button
-    self.prev_cruise_enabled = ret.cruiseState.enabled
+    self.prev_cts_active = self.cts_active
 
     # Adjust target on SET+/SET- rising edges (±5 km/h, clamped 30..120).
     # Note: self.accel_button reads the RES (resume) bit, not SET_P — SET_P has
     # its own bit in CRZ_BTNS. Use the dedicated set_plus/minus edges here.
+    # Only respond while cruise is engaged so a press during a brake-induced
+    # disengage doesn't shift the upper bound silently.
     if self.velocity_control_mode and ret.cruiseState.enabled:
       if self.set_plus_button == 1 and prev_set_plus_button == 0:
         self.cruise_speed_target_kph = min(120.0, self.cruise_speed_target_kph + 5.0)
       if self.set_minus_button == 1 and prev_set_minus_button == 0:
         self.cruise_speed_target_kph = max(30.0, self.cruise_speed_target_kph - 5.0)
+    # Override speed whenever the mode is held, so a brake intervention that drops
+    # cruiseState.enabled briefly doesn't reset plannerd's upper bound to whatever
+    # CRZ_SPEED happens to be at resume time.
+    if self.velocity_control_mode:
       # Pin speedCluster to the real CRZ_SPEED *before* overriding speed, otherwise
       # CarInterfaceBase fills speedCluster=speed (= our target) when it's still 0.
       ret.cruiseState.speedCluster = ret.cruiseState.speed
