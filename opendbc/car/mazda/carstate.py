@@ -23,6 +23,7 @@ class CarState(CarStateBase):
     self.prev_mrcc_button = 0
     self.velocity_control_mode = False
     self.prev_cts_active = False
+    self.prev_cruise_enabled = False
     self.cruise_speed_target_kph = 0.0
 
     self.distance_button = 0
@@ -168,15 +169,24 @@ class CarState(CarStateBase):
       self.velocity_control_mode = True
     if self.prev_cts_active and not self.cts_active:
       self.velocity_control_mode = False
-    # Force-clear when ACC itself becomes unavailable — guards against
-    # missing the cts_active falling edge (e.g. CTS pressed after ACC off).
+    # Force-clear when ACC itself becomes unavailable — also resets the target so
+    # next engage cannot reuse a stale value, and prevents missing the cts_active
+    # falling edge (e.g. CTS pressed after ACC off).
     if not ret.cruiseState.available:
       self.velocity_control_mode = False
-    # Initialize target to the current CRZ_SPEED on CTS-mode rising edge while armed.
-    if self.velocity_control_mode and not self.prev_cts_active and self.cts_active:
+      self.cruise_speed_target_kph = 0.0
+    # Initialize target on cruise-enabled rising edge while armed *and* target
+    # is still unset (== 0). CTS_ACTIVE is latched by the car across ignition
+    # cycles when openpilot doesn't restart, so a CTS-rising-edge initializer
+    # can be missed at run start. cruiseState.enabled rising edge is reliable
+    # for first-engage. The "target == 0" guard prevents a brake-intervention
+    # disengage/resume from clobbering the held target.
+    if (self.velocity_control_mode and ret.cruiseState.enabled
+        and not self.prev_cruise_enabled and self.cruise_speed_target_kph == 0.0):
       self.cruise_speed_target_kph = ret.cruiseState.speed * CV.MS_TO_KPH
     self.prev_mrcc_button = self.mrcc_button
     self.prev_cts_active = self.cts_active
+    self.prev_cruise_enabled = ret.cruiseState.enabled
 
     # Adjust target on SET+/SET- rising edges (±5 km/h, clamped 30..120).
     # Note: self.accel_button reads the RES (resume) bit, not SET_P — SET_P has
