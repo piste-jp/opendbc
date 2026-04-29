@@ -168,6 +168,10 @@ class CarState(CarStateBase):
       self.velocity_control_mode = True
     if self.prev_cts_active and not self.cts_active:
       self.velocity_control_mode = False
+    # Force-clear when ACC itself becomes unavailable — guards against
+    # missing the cts_active falling edge (e.g. CTS pressed after ACC off).
+    if not ret.cruiseState.available:
+      self.velocity_control_mode = False
     # Initialize target to the current CRZ_SPEED on CTS-mode rising edge while armed.
     if self.velocity_control_mode and not self.prev_cts_active and self.cts_active:
       self.cruise_speed_target_kph = ret.cruiseState.speed * CV.MS_TO_KPH
