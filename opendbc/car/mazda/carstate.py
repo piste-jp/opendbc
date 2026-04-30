@@ -22,8 +22,10 @@ class CarState(CarStateBase):
     self.cts_button = 0
     self.prev_mrcc_button = 0
     self.velocity_control_mode = False
+    self.velocity_control_mode_pending = False
     self.prev_cts_active = False
     self.prev_cruise_enabled = False
+    self.prev_cruise_available = False
     self.cruise_speed_target_kph = 0.0
 
     self.distance_button = 0
@@ -154,39 +156,45 @@ class CarState(CarStateBase):
       *create_button_events(self.decel_button, prev_decel_button, {1: ButtonType.decelCruise}),
     ]
 
-    # velocity_control_mode: MRCC button rising edge arms it; CTS-mode exit clears it.
-    # cts_active is the CTS_ACTIVE bit on MSG_10 — it stays True across short brake
-    # interventions that drop cruiseState.enabled, so the driver can resume without
-    # losing the upper bound. The mode clears only when the driver actually leaves
-    # CTS mode (e.g. by pressing CTS to switch back to MRCC, or by turning off ACC).
+    # velocity_control_mode: MRCC button rising edge arms it (pending). The
+    # pending flag is promoted to active once ACC reports available, so a press
+    # made while ACC is still off (the typical MRCC->CTS->SET+ sequence) is not
+    # self-cancelled by the unavailable-clear path below.
     #
-    # While the mode is set, cruise_speed_target_kph overrides cruiseState.speed so
+    # CTS exit (rising edge of cts_active falling) clears both pending and
+    # active, since leaving CTS mode means the driver is done with VC.
+    #
+    # While active, cruise_speed_target_kph overrides cruiseState.speed so
     # plannerd's MPC upper bound is decoupled from CRZ_SPEED (breaks the SET_P
     # feedback loop that previously ran away — see longtitude-control-mazda6.md).
-    # speedCluster is pinned to the real CRZ_SPEED so the HUD/cluster reading stays
-    # honest.
+    # speedCluster is pinned to the real CRZ_SPEED so the HUD/cluster reading
+    # stays honest.
     if self.mrcc_button == 1 and self.prev_mrcc_button == 0:
+      self.velocity_control_mode_pending = True
+    # Promote pending->active on cruiseState.available rising edge.
+    if ret.cruiseState.available and not self.prev_cruise_available and self.velocity_control_mode_pending:
       self.velocity_control_mode = True
+      self.velocity_control_mode_pending = False
+    # CTS-mode exit clears everything (driver explicitly leaving VC).
     if self.prev_cts_active and not self.cts_active:
       self.velocity_control_mode = False
-    # Force-clear when ACC itself becomes unavailable — also resets the target so
-    # next engage cannot reuse a stale value, and prevents missing the cts_active
-    # falling edge (e.g. CTS pressed after ACC off).
-    if not ret.cruiseState.available:
+      self.velocity_control_mode_pending = False
+    # ACC unavailable falling edge clears the active mode and resets the target
+    # so the next engage starts clean. Pending is preserved across this edge so
+    # MRCC presses made while ACC is off survive (typical engage sequence).
+    if self.prev_cruise_available and not ret.cruiseState.available:
       self.velocity_control_mode = False
       self.cruise_speed_target_kph = 0.0
-    # Initialize target on cruise-enabled rising edge while armed *and* target
-    # is still unset (== 0). CTS_ACTIVE is latched by the car across ignition
-    # cycles when openpilot doesn't restart, so a CTS-rising-edge initializer
-    # can be missed at run start. cruiseState.enabled rising edge is reliable
-    # for first-engage. The "target == 0" guard prevents a brake-intervention
-    # disengage/resume from clobbering the held target.
+    # Initialize target on cruise-enabled rising edge while active *and* target
+    # is still unset (== 0). The "target == 0" guard prevents a brake-
+    # intervention disengage/resume from clobbering the held target.
     if (self.velocity_control_mode and ret.cruiseState.enabled
         and not self.prev_cruise_enabled and self.cruise_speed_target_kph == 0.0):
       self.cruise_speed_target_kph = ret.cruiseState.speed * CV.MS_TO_KPH
     self.prev_mrcc_button = self.mrcc_button
     self.prev_cts_active = self.cts_active
     self.prev_cruise_enabled = ret.cruiseState.enabled
+    self.prev_cruise_available = ret.cruiseState.available
 
     # Adjust target on SET+/SET- rising edges (±5 km/h, clamped 30..120).
     # Note: self.accel_button reads the RES (resume) bit, not SET_P — SET_P has
@@ -206,7 +214,9 @@ class CarState(CarStateBase):
       # CarInterfaceBase fills speedCluster=speed (= our target) when it's still 0.
       ret.cruiseState.speedCluster = ret.cruiseState.speed
       ret.cruiseState.speed = self.cruise_speed_target_kph * CV.KPH_TO_MS
-    ret.mazdaVelocityControlMode = self.velocity_control_mode
+    # Surface either pending or active to the HUD so the V badge appears as
+    # soon as the driver presses MRCC, even before ACC is available.
+    ret.mazdaVelocityControlMode = self.velocity_control_mode or self.velocity_control_mode_pending
 
     return ret
 
