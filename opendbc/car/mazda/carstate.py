@@ -175,8 +175,12 @@ class CarState(CarStateBase):
     if ret.cruiseState.available and not self.prev_cruise_available and self.velocity_control_mode_pending:
       self.velocity_control_mode = True
       self.velocity_control_mode_pending = False
-    # CTS-mode exit clears everything (driver explicitly leaving VC).
-    if self.prev_cts_active and not self.cts_active:
+    # CTS-mode exit clears everything *only if* ACC also disengaged at the same
+    # time — that's the signature of a driver-initiated cancel. A CTS_ACTIVE
+    # drop while cruiseState.enabled stays high is the vehicle ACC briefly
+    # falling back from CTS to MRCC under heavy decel, which we want to
+    # survive (otherwise the V badge disappears mid-brake).
+    if self.prev_cts_active and not self.cts_active and not ret.cruiseState.enabled:
       self.velocity_control_mode = False
       self.velocity_control_mode_pending = False
     # ACC unavailable falling edge clears the active mode and resets the target
