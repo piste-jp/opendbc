@@ -1,3 +1,5 @@
+import math
+
 from opendbc.can import CANDefine, CANParser
 from opendbc.car import Bus, create_button_events, structs
 from opendbc.car.common.conversions import Conversions as CV
@@ -194,7 +196,10 @@ class CarState(CarStateBase):
     # intervention disengage/resume from clobbering the held target.
     if (self.velocity_control_mode and ret.cruiseState.enabled
         and not self.prev_cruise_enabled and self.cruise_speed_target_kph == 0.0):
-      self.cruise_speed_target_kph = ret.cruiseState.speed * CV.MS_TO_KPH
+      # Round up to the next multiple of 5 km/h so SET+/SET- (±5) stays on a
+      # clean grid. Clamp matches the SET+/SET- bounds.
+      raw_kph = ret.cruiseState.speed * CV.MS_TO_KPH
+      self.cruise_speed_target_kph = max(30.0, min(120.0, math.ceil(raw_kph / 5.0) * 5.0))
     self.prev_mrcc_button = self.mrcc_button
     self.prev_cts_active = self.cts_active
     self.prev_cruise_enabled = ret.cruiseState.enabled
