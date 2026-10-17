@@ -177,6 +177,7 @@ struct CarState {
   gasPressed @4 :Bool;    # this is user pedal only
 
   brakePressed @6 :Bool;  # this is user pedal only
+  brakeLamp @63 :Bool;    # brake lamp is on (driver pedal OR automatic braking by ACC/AEB)
   regenBraking @45 :Bool; # this is user pedal only
   parkingBrake @39 :Bool;
   brakeHoldActive @38 :Bool;
@@ -205,11 +206,15 @@ struct CarState {
   blockPcmEnable @60 :Bool;  # whether to allow PCM to enable this frame
   carNotReady @61 :Bool;  # car is transiently refusing engagement, used to prevent a fault if engaged
 
+  # Mazda velocity control mode: openpilot drives the stock ACC set speed with SET+/SET-
+  mazdaVelocityControlMode @64 :Bool;
+
   # cruise state
   cruiseState @10 :CruiseState;
 
   # gear
   gearShifter @14 :GearShifter;
+  gearStep @62 :Int8;  # current transmission gear (1..N), -1 if unknown
 
   # button presses
   buttonEvents @11 :List(ButtonEvent);
@@ -358,6 +363,10 @@ struct CarControl {
   currentCurvature @17 :Float32;  # From vehicle model
 
   driverMonitoringEscalation @18 :Bool; # trigger the car's stock driver monitoring escalation
+
+  # Mazda velocity control mode: plannerd's target speed at the end of the plan horizon, in km/h.
+  # 0 when unavailable. The Mazda 6 carcontroller presses SET+/SET- so the stock ACC set speed tracks it.
+  mazdaPlanTargetKph @19 :Float32;
 
   cruiseControl @4 :CruiseControl;
   hudControl @5 :HUDControl;
