@@ -62,8 +62,8 @@ def create_steering_control(packer, CP, frame, apply_torque, lkas):
   return packer.make_can_msg("CAM_LKAS", 0, values)
 
 
-def create_alert_command(packer, cam_msg: dict, ldw: bool, steer_required: bool):
-  values = {s: cam_msg[s] for s in [
+def create_alert_command(packer, cam_msg: dict, ldw: bool, steer_required: bool, forward_tja: bool = False):
+  forwarded = [
     "LINE_VISIBLE",
     "LINE_NOT_VISIBLE",
     "LANE_LINES",
@@ -73,7 +73,11 @@ def create_alert_command(packer, cam_msg: dict, ldw: bool, steer_required: bool)
     "NO_ERR_BIT",
     "S1",
     "S1_HBEAM",
-  ]}
+  ]
+  if forward_tja:
+    # Mazda 6 2022 shows "front camera sensor system error" if these are zeroed instead of passed through
+    forwarded += ["TJA", "TJA_TRANSITION", "HANDS_OFF_WARN"]
+  values = {s: cam_msg[s] for s in forwarded}
   values.update({
     # TODO: what's the difference between all these? do we need to send all?
     "HANDS_WARN_3_BITS": 0b111 if steer_required else 0,
@@ -92,20 +96,22 @@ def create_button_cmd(packer, CP, counter, button):
 
   can = int(button == Buttons.CANCEL)
   res = int(button == Buttons.RESUME)
+  set_p = int(button == Buttons.SET_PLUS)
+  set_m = int(button == Buttons.SET_MINUS)
 
   if CP.flags & MazdaFlags.GEN1:
     values = {
       "CAN_OFF": can,
       "CAN_OFF_INV": (can + 1) % 2,
 
-      "SET_P": 0,
-      "SET_P_INV": 1,
+      "SET_P": set_p,
+      "SET_P_INV": (set_p + 1) % 2,
 
       "RES": res,
       "RES_INV": (res + 1) % 2,
 
-      "SET_M": 0,
-      "SET_M_INV": 1,
+      "SET_M": set_m,
+      "SET_M_INV": (set_m + 1) % 2,
 
       "DISTANCE_LESS": 0,
       "DISTANCE_LESS_INV": 1,
