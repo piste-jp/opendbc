@@ -44,12 +44,14 @@ class Mazda6CarState(CarState):
     gear_box = int(cp.vl["GEAR"]["GEAR_BOX"])
     mazda.gearStep = gear_box if 1 <= gear_box <= 6 else -1
     mazda.manualShiftMode = cp.vl["GEAR"]["MANUAL_MODE"] == 1
+    mazda.shifterM = cp.vl["NEW_MSG_6"]["SHIFTER_M"] == 1
 
     # PEDALS.BRAKE_ON is the driver's pedal only, TRACTION.BRAKE also covers braking by the stock ACC
     mazda.brakeLamp = cp.vl["TRACTION"]["BRAKE"] == 1
 
     # telemetry, for logs
     mazda.engineRpm = cp.vl["ENGINE_DATA"]["RPM"]
+    mazda.gasPedalRaw = cp.vl["ENGINE_DATA"]["PEDAL_GAS"]
     mazda.accelX = cp.vl["BRAKE"]["VEHICLE_ACC_X"]
     mazda.accelY = cp.vl["BRAKE"]["VEHICLE_ACC_Y"]
     mazda.brakePressure = cp.vl["BRAKE"]["BRAKE_PRESSURE"]

@@ -219,7 +219,9 @@ struct CarState {
     accelY @6 :Float32;  # [m/s^2] lateral, left positive, from the car's sensor. Pinned at 16.38 (invalid) around ignition on/off
     brakePressure @7 :Float32;  # brake pressure above rest, unit unknown
     coolantTemp @8 :Float32;  # [degC]
-    manualShiftMode @9 :Bool;  # shifter in M
+    manualShiftMode @9 :Bool;  # shifting manually: shifter in M, or a paddle override in D
+    shifterM @10 :Bool;  # shift lever in M
+    gasPedalRaw @11 :Float32;  # driver's accelerator pedal sensor, 0 released. Full travel not measured yet
   }
 
   # cruise state

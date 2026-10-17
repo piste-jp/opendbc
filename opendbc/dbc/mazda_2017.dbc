@@ -691,6 +691,7 @@ BO_ 305 NEW_MSG_6: 8 XXX
  SG_ NEW_SIGNAL_1 : 8|1@0+ (1,0) [0|255] "" XXX
  SG_ NEW_SIGNAL_2 : 9|1@0+ (1,0) [0|1] "" XXX
  SG_ NEW_SIGNAL_3 : 10|1@0+ (1,0) [0|1] "" XXX
+ SG_ SHIFTER_M : 23|1@0+ (1,0) [0|1] "" XXX
 
 BO_ 1238 TEMPERATURE: 8 XXX
  SG_ TEMPERATURE_MAYBE : 47|8@0+ (1,0) [0|4294967295] "" XXX
@@ -791,7 +792,8 @@ CM_ SG_ 539 CTS_MODE "1 while the stock ACC is in Cruising & Traffic Support (CT
 CM_ SG_ 552 MORE_GEAR "";
 CM_ SG_ 552 GEAR "0 Shifting, 1 P, 2 R, 3 N, 4 D";
 CM_ SG_ 552 GEAR_BOX "0 P, 14 R, 1 though 6 D for speeds, 15 Shift";
-CM_ SG_ 552 MANUAL_MODE "1 in manual shift mode (shifter in M), GEAR stays 4";
+CM_ SG_ 552 MANUAL_MODE "1 in manual shift mode: shifter in M, or a paddle override in D. GEAR stays 4";
+CM_ SG_ 305 SHIFTER_M "1 while the shift lever is in M";
 CM_ SG_ 552 AUTO_MODE "1 in automatic shift mode";
 CM_ SG_ 540 HANDS_ON_STEER_WARN "0 no warning, b warning";
 CM_ SG_ 540 DISTANCE_SETTING "Radar distance 0: disabled, 1: 4 bars, 2: 3 bars, 3: 2 bars, 4: 1 bar";
