@@ -221,7 +221,8 @@ struct CarState {
     coolantTemp @8 :Float32;  # [degC]
     manualShiftMode @9 :Bool;  # shifting manually: shifter in M, or a paddle override in D
     shifterM @10 :Bool;  # shift lever in M
-    gasPedalRaw @11 :Float32;  # driver's accelerator pedal sensor, 0 released. Full travel not measured yet
+    gasPedal @11 :Float32;  # [%] driver's accelerator pedal sensor, 0 while the stock ACC opens the throttle
+    outdoorTemp @12 :Float32;  # [degC]
   }
 
   # cruise state

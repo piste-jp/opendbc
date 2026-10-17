@@ -51,7 +51,8 @@ class Mazda6CarState(CarState):
 
     # telemetry, for logs
     mazda.engineRpm = cp.vl["ENGINE_DATA"]["RPM"]
-    mazda.gasPedalRaw = cp.vl["ENGINE_DATA"]["PEDAL_GAS"]
+    mazda.gasPedal = cp.vl["ENGINE_DATA"]["PEDAL_GAS"]
+    mazda.outdoorTemp = cp.vl["CHECK_AND_TEMP"]["OUTDOOR_TEMP"]
     mazda.accelX = cp.vl["BRAKE"]["VEHICLE_ACC_X"]
     mazda.accelY = cp.vl["BRAKE"]["VEHICLE_ACC_Y"]
     mazda.brakePressure = cp.vl["BRAKE"]["BRAKE_PRESSURE"]
