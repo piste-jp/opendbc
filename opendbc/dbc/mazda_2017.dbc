@@ -765,6 +765,67 @@ BO_ 1177 RADAR_499_STATIC: 8 XXX
 
 
 
+BO_ 138 MSG_8A: 8 XXX
+ SG_ NEW_SIGNAL_1 : 11|8@0+ (1,0) [0|255] "" XXX
+ SG_ NEW_SIGNAL_2 : 27|2@0+ (1,0) [0|3] "" XXX
+ SG_ NEW_SIGNAL_3 : 35|4@0+ (1,0) [0|15] "" XXX
+ SG_ NEW_SIGNAL_4 : 43|4@0+ (1,0) [0|15] "" XXX
+ SG_ NEW_SIGNAL_5 : 51|4@0+ (1,0) [0|15] "" XXX
+ SG_ NEW_SIGNAL_6 : 55|2@0+ (1,0) [0|3] "" XXX
+ SG_ NEW_SIGNAL_7 : 63|4@0+ (1,0) [0|15] "" XXX
+
+BO_ 254 HEARTBEAT_FE: 8 XXX
+ SG_ CTR : 51|4@0+ (1,0) [0|15] "" XXX
+ SG_ CHKSUM : 63|8@0+ (1,0) [0|255] "" XXX
+
+BO_ 522 MSG_20A: 8 XXX
+ SG_ NEW_SIGNAL_1 : 17|9@0+ (1,0) [0|511] "" XXX
+ SG_ NEW_SIGNAL_2 : 39|1@0+ (1,0) [0|1] "" XXX
+
+BO_ 1061 TURN_LAMP_STATUS_MAYBE: 8 XXX
+ SG_ RIGHT_TURN_LAMP_MAYBE : 9|1@0+ (1,0) [0|1] "" XXX
+ SG_ LEFT_TURN_LAMP_MAYBE : 23|1@0+ (1,0) [0|1] "" XXX
+ SG_ RIGHT_TURN_LAMP_2_MAYBE : 21|1@0+ (1,0) [0|1] "" XXX
+ SG_ LEFT_TURN_LAMP_2_MAYBE : 19|1@0+ (1,0) [0|1] "" XXX
+
+BO_ 1108 ASCII_ID: 8 XXX
+
+BO_ 1147 MOVING_STATE: 8 XXX
+ SG_ NEW_SIGNAL_1 : 0|1@0+ (1,0) [0|1] "" XXX
+ SG_ STANDSTILL : 4|1@0+ (1,0) [0|1] "" XXX
+ SG_ MOVING : 5|1@0+ (1,0) [0|1] "" XXX
+
+BO_ 1241 MSG_4D9: 8 XXX
+ SG_ CTR : 32|3@0+ (1,0) [0|7] "" XXX
+ SG_ NEW_SIGNAL_1 : 63|8@0+ (1,0) [0|255] "" XXX
+
+BO_ 1247 MSG_4DF: 8 XXX
+ SG_ NEW_SIGNAL_1 : 7|8@0+ (1,0) [0|255] "" XXX
+ SG_ NEW_SIGNAL_2 : 23|8@0+ (1,0) [0|255] "" XXX
+ SG_ NEW_SIGNAL_3 : 31|2@0+ (1,0) [0|3] "" XXX
+ SG_ TEMPERATURE_SLOW_MAYBE : 47|8@0+ (1,0) [0|255] "" XXX
+ SG_ NEW_SIGNAL_4 : 55|1@0+ (1,0) [0|1] "" XXX
+
+BO_ 1409 NM_01: 8 XXX
+ SG_ NODE_ID : 7|8@0+ (1,0) [0|255] "" XXX
+
+BO_ 1430 NM_16: 8 XXX
+ SG_ NODE_ID : 7|8@0+ (1,0) [0|255] "" XXX
+
+BO_ 1440 NM_20: 8 XXX
+ SG_ NODE_ID : 7|8@0+ (1,0) [0|255] "" XXX
+
+CM_ BO_ 254 "Heartbeat at 100 Hz. CHKSUM = (sum of bytes 0..6 + 6) & 0xFF";
+CM_ BO_ 1108 "8 ASCII characters, 0M2P0325 on a Mazda 6 Wagon 2022";
+CM_ BO_ 1409 "Network management (OSEK NM style alive), payload NODE_ID 00 aa 55 aa 55 aa 55";
+CM_ BO_ 1430 "Network management (OSEK NM style alive), payload NODE_ID 00 aa 55 aa 55 aa 55";
+CM_ BO_ 1440 "Network management (OSEK NM style alive), payload NODE_ID 00 aa 55 aa 55 aa 55";
+CM_ BO_ 1061 "Set the first time the left/right turn signal is used after ignition on, likely lamp checks";
+CM_ SG_ 1147 STANDSTILL "same as BSM.STANDSTILL";
+CM_ SG_ 1247 TEMPERATURE_SLOW_MAYBE "rises slowly for the whole drive, follows coolant temp with a lag";
+CM_ SG_ 1247 NEW_SIGNAL_1 "0xfe right after ignition on, then 79..88, drifts slowly";
+CM_ BO_ 138 "100 Hz, only changes with the engine running, does not follow vehicle motion";
+CM_ BO_ 522 "67 Hz, only changes with the engine running, does not follow vehicle motion";
 CM_ SG_ 357 GEAR "13P, 26R, 13N, 24D";
 CM_ SG_ 605 PED_BRAKE "3: no brake, 4: brake";
 CM_ SG_ 605 BRAKE_WARNING "Flashing brake warning and audible alert for potential forward collision";
