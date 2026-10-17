@@ -295,7 +295,7 @@ BO_ 1056 CHECK_AND_TEMP: 8 XXX
  SG_ counter_or_GEAR : 15|8@0+ (1,0) [0|255] "" XXX
  SG_ CTR : 23|8@0+ (1,0) [0|255] "" XXX
  SG_ STANDSTILL : 32|1@0+ (1,0) [0|255] "" XXX
- SG_ COOLANT_TEMP : 7|8@0+ (1,0) [0|255] "" XXX
+ SG_ COOLANT_TEMP : 7|8@0+ (1,-40) [-40|215] "degC" XXX
  SG_ LOW_ENGINE_OIL_PRESSURE : 43|1@0+ (1,0) [0|1] "" XXX
  SG_ CHECK_FUEL_CAP : 40|1@0+ (1,0) [0|1] "" XXX
  SG_ CHARGING_SYSTEM_MALFUNCTION : 38|1@0+ (1,0) [0|1] "" XXX
@@ -356,9 +356,9 @@ BO_ 130 STEER: 8 XXX
 
 BO_ 120 BRAKE: 8 XXX
  SG_ CTR : 55|8@0+ (1,0) [0|255] "" XXX
- SG_ BRAKE_PRESSURE : 39|8@0+ (1,0) [0|255] "" XXX
+ SG_ BRAKE_PRESSURE : 24|9@0+ (1,-152) [-152|359] "" XXX
  SG_ VEHICLE_ACC_X : 5|13@0+ (0.01,-40) [-40|40] "m/s^2" XXX
- SG_ VEHICLE_ACC_Y : 8|13@0+ (0.001,-4.096) [-4.096|4.096] "m/s^2" XXX
+ SG_ VEHICLE_ACC_Y : 8|13@0+ (0.004,-16.384) [-16.384|16.38] "m/s^2" XXX
 
 BO_ 304 GEAR_RELATED: 8 XXX
  SG_ NEW_SIGNAL_1 : 55|8@0+ (1,0) [0|255] "" XXX
@@ -496,6 +496,8 @@ BO_ 552 GEAR: 8 XXX
  SG_ MORE_GEAR : 7|4@0+ (1,0) [0|15] "" XXX
  SG_ GEAR : 2|3@0+ (1,0) [0|7] "" XXX
  SG_ GEAR_BOX : 36|4@0+ (1,0) [0|15] "" XXX
+ SG_ MANUAL_MODE : 15|1@0+ (1,0) [0|1] "" XXX
+ SG_ AUTO_MODE : 13|1@0+ (1,0) [0|1] "" XXX
 
 BO_ 543 CRZ_EVENTS: 8 XXX
  SG_ CTR : 51|4@0+ (1,0) [0|15] "" XXX
@@ -781,6 +783,7 @@ CM_ SG_ 1088 TJA_TRANSITION "3: if TJA signal is 3, otherwise set to 0";
 CM_ SG_ 1045 ABS_MALFUNCTION "off: 0, solid: 1, slow blink: 2, fast blink: 3";
 CM_ SG_ 120 VEHICLE_ACC_X "Vehicle acceleration of X-axis wrt. NED frame.";
 CM_ SG_ 120 VEHICLE_ACC_Y "Vehicle acceleration of Y-axis wrt. NED frame.";
+CM_ SG_ 120 BRAKE_PRESSURE "0 at rest, rises with the brake pedal. Unit unknown";
 CM_ SG_ 157 CAN_OFF "Disengage Cruise if enabled, if already disabled  TURN it OFF ";
 CM_ SG_ 157 MRCC_BUTTON "turns the stock ACC on in MRCC mode, or off. BIT1 is its inverse";
 CM_ SG_ 157 CTS_BUTTON "turns the stock ACC on in CTS mode (also from MRCC mode), or off";
@@ -788,6 +791,8 @@ CM_ SG_ 539 CTS_MODE "1 while the stock ACC is in Cruising & Traffic Support (CT
 CM_ SG_ 552 MORE_GEAR "";
 CM_ SG_ 552 GEAR "0 Shifting, 1 P, 2 R, 3 N, 4 D";
 CM_ SG_ 552 GEAR_BOX "0 P, 14 R, 1 though 6 D for speeds, 15 Shift";
+CM_ SG_ 552 MANUAL_MODE "1 in manual shift mode (shifter in M), GEAR stays 4";
+CM_ SG_ 552 AUTO_MODE "1 in automatic shift mode";
 CM_ SG_ 540 HANDS_ON_STEER_WARN "0 no warning, b warning";
 CM_ SG_ 540 DISTANCE_SETTING "Radar distance 0: disabled, 1: 4 bars, 2: 3 bars, 3: 2 bars, 4: 1 bar";
 CM_ SG_ 1143 REAR_CT_ALERT "Rear Cross Traffic Alert";

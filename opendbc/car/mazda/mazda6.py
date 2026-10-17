@@ -38,19 +38,29 @@ class Mazda6CarState(CarState):
     ret = super().update(can_parsers)
     cp = can_parsers[Bus.pt]
 
+    mazda = ret.mazda
+
     # GEAR_BOX: 0=P, 1..6=current AT gear, 14=R, 15=shifting
     gear_box = int(cp.vl["GEAR"]["GEAR_BOX"])
-    ret.gearStep = gear_box if 1 <= gear_box <= 6 else -1
+    mazda.gearStep = gear_box if 1 <= gear_box <= 6 else -1
+    mazda.manualShiftMode = cp.vl["GEAR"]["MANUAL_MODE"] == 1
 
     # PEDALS.BRAKE_ON is the driver's pedal only, TRACTION.BRAKE also covers braking by the stock ACC
-    ret.brakeLamp = cp.vl["TRACTION"]["BRAKE"] == 1
+    mazda.brakeLamp = cp.vl["TRACTION"]["BRAKE"] == 1
+
+    # telemetry, for logs
+    mazda.engineRpm = cp.vl["ENGINE_DATA"]["RPM"]
+    mazda.accelX = cp.vl["BRAKE"]["VEHICLE_ACC_X"]
+    mazda.accelY = cp.vl["BRAKE"]["VEHICLE_ACC_Y"]
+    mazda.brakePressure = cp.vl["BRAKE"]["BRAKE_PRESSURE"]
+    mazda.coolantTemp = cp.vl["CHECK_AND_TEMP"]["COOLANT_TEMP"]
 
     ret.steerFaultTemporary = ret.steerFaultTemporary and cp.vl["ENGINE_DATA"]["SPEED"] > STEER_FAULT_MIN_SPEED_KPH
 
     # In CTS mode the stock ACC and camera drive the car (the panda forwards the camera's LKAS commands).
     # openpilot stays out: report cruise as unavailable so it never engages or cancels, and hide faults.
     self.cts_mode = cp.vl["CRZ_INFO"]["CTS_MODE"] == 1
-    ret.mazdaCtsMode = self.cts_mode
+    mazda.ctsMode = self.cts_mode
     if self.cts_mode:
       ret.cruiseState.available = False
       ret.cruiseState.enabled = False
@@ -96,7 +106,7 @@ class Mazda6CarState(CarState):
       cruise.speedCluster = cruise.speed
       cruise.speed = self.cruise_speed_target_kph * CV.KPH_TO_MS
 
-    ret.mazdaVelocityControlMode = self.velocity_control_mode
+    ret.mazda.velocityControlMode = self.velocity_control_mode
 
 
 class Mazda6CarController(CarController):
@@ -119,8 +129,8 @@ class Mazda6CarController(CarController):
     # Velocity control mode: press SET+/SET- so the stock ACC set speed tracks plannerd's target,
     # capped by the driver's upper bound
     if (CS.velocity_control_mode and CS.out.cruiseState.enabled and self.vc_button_cooldown == 0 and
-        not CC.cruiseControl.cancel and not CC.cruiseControl.resume and CC.mazdaPlanTargetKph > 0):
-      target_kph = min(CC.mazdaPlanTargetKph, CS.cruise_speed_target_kph)
+        not CC.cruiseControl.cancel and not CC.cruiseControl.resume and CC.mazda.planTargetKph > 0):
+      target_kph = min(CC.mazda.planTargetKph, CS.cruise_speed_target_kph)
       crz_speed_kph = CS.out.cruiseState.speedCluster * CV.MS_TO_KPH
       gap_kph = crz_speed_kph - target_kph
 

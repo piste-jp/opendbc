@@ -177,7 +177,6 @@ struct CarState {
   gasPressed @4 :Bool;    # this is user pedal only
 
   brakePressed @6 :Bool;  # this is user pedal only
-  brakeLamp @63 :Bool;    # brake lamp is on (driver pedal OR automatic braking by ACC/AEB)
   regenBraking @45 :Bool; # this is user pedal only
   parkingBrake @39 :Bool;
   brakeHoldActive @38 :Bool;
@@ -206,17 +205,28 @@ struct CarState {
   blockPcmEnable @60 :Bool;  # whether to allow PCM to enable this frame
   carNotReady @61 :Bool;  # car is transiently refusing engagement, used to prevent a fault if engaged
 
-  # Mazda velocity control mode: openpilot drives the stock ACC set speed with SET+/SET-
-  mazdaVelocityControlMode @64 :Bool;
-  # Mazda 6: the stock ACC is in CTS mode, the stock camera steers and openpilot stays out
-  mazdaCtsMode @65 :Bool;
+  # Mazda specific state and telemetry
+  mazda @62 :Mazda;
+
+  struct Mazda {
+    gearStep @0 :Int8;  # current transmission gear (1..N), -1 if unknown
+    brakeLamp @1 :Bool;  # brakes applied by the driver or by the stock ACC/AEB
+    velocityControlMode @2 :Bool;  # openpilot drives the stock ACC set speed with SET+/SET-
+    ctsMode @3 :Bool;  # the stock ACC is in CTS mode, the stock camera steers and openpilot stays out
+
+    engineRpm @4 :Float32;
+    accelX @5 :Float32;  # [m/s^2] longitudinal, forward positive, from the car's sensor (includes road slope)
+    accelY @6 :Float32;  # [m/s^2] lateral, left positive, from the car's sensor. Pinned at 16.38 (invalid) around ignition on/off
+    brakePressure @7 :Float32;  # brake pressure above rest, unit unknown
+    coolantTemp @8 :Float32;  # [degC]
+    manualShiftMode @9 :Bool;  # shifter in M
+  }
 
   # cruise state
   cruiseState @10 :CruiseState;
 
   # gear
   gearShifter @14 :GearShifter;
-  gearStep @62 :Int8;  # current transmission gear (1..N), -1 if unknown
 
   # button presses
   buttonEvents @11 :List(ButtonEvent);
@@ -366,9 +376,14 @@ struct CarControl {
 
   driverMonitoringEscalation @18 :Bool; # trigger the car's stock driver monitoring escalation
 
-  # Mazda velocity control mode: plannerd's target speed at the end of the plan horizon, in km/h.
-  # 0 when unavailable. The Mazda 6 carcontroller presses SET+/SET- so the stock ACC set speed tracks it.
-  mazdaPlanTargetKph @19 :Float32;
+  # Mazda specific controls
+  mazda @19 :Mazda;
+
+  struct Mazda {
+    # velocity control mode: plannerd's target speed at the end of the plan horizon, in km/h. 0 when unavailable.
+    # The Mazda 6 carcontroller presses SET+/SET- so the stock ACC set speed tracks it.
+    planTargetKph @0 :Float32;
+  }
 
   cruiseControl @4 :CruiseControl;
   hudControl @5 :HUDControl;
