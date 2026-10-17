@@ -9,6 +9,8 @@ VisualAlert = structs.CarControl.HUDControl.VisualAlert
 
 
 class CarController(CarControllerBase):
+  FORWARD_TJA = False
+
   def __init__(self, dbc_names, CP):
     super().__init__(dbc_names, CP)
     self.apply_torque_last = 0
@@ -51,7 +53,7 @@ class CarController(CarControllerBase):
       steer_required = CC.hudControl.visualAlert == VisualAlert.steerRequired
       # TODO: find a way to silence audible warnings so we can add more hud alerts
       steer_required = steer_required and CS.lkas_allowed_speed
-      can_sends.append(mazdacan.create_alert_command(self.packer, CS.cam_laneinfo, ldw, steer_required))
+      can_sends.append(mazdacan.create_alert_command(self.packer, CS.cam_laneinfo, ldw, steer_required, self.FORWARD_TJA))
 
     # send steering command
     can_sends.append(mazdacan.create_steering_control(self.packer, self.CP,

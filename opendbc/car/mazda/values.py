@@ -72,6 +72,14 @@ class CAR(Platforms):
     [MazdaCarDocs("Mazda 6 2017-20")],
     MazdaCarSpecs(wheelbase=2.83, steerRatio=15.5)
   )
+  # Japan-market GJ5FW wagon (25S L Package, 2022/12). Wheelbase is from Mazda's spec sheet,
+  # steerRatio is paramsd's learned 15.3 @ 2.83 m rescaled to the wagon's wheelbase.
+  # Axle weights 930/640 kg (registration certificate) put the center of mass at 0.41 of the
+  # wheelbase from the front axle, which matches the Mazda default set in the interface.
+  MAZDA_6_WAGON_2022 = MazdaPlatformConfig(
+    [MazdaCarDocs("Mazda 6 Wagon 2022", package="25S L Package (Japan)")],
+    MazdaCarSpecs(wheelbase=2.75, steerRatio=15.8)
+  )
   MAZDA_CX9_2021 = MazdaPlatformConfig(
     [MazdaCarDocs("Mazda CX-9 2021-23", video="https://youtu.be/dA3duO4a0O4")],
     MAZDA_CX9.specs

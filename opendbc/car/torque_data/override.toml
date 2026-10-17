@@ -117,3 +117,6 @@ legend = ["LAT_ACCEL_FACTOR", "MAX_LAT_ACCEL_MEASURED", "FRICTION"]
 # Manually checked
 "HONDA_CIVIC_2022" = [2.5, 1.2, 0.15]
 "HONDA_HRV_3G" = [2.5, 1.2, 0.2]
+
+# Learned by torqued on the car; MAX_LAT_ACCEL_MEASURED from MAZDA_CX9_2021
+"MAZDA_6_WAGON_2022" = [1.48, 1.09, 0.14]
