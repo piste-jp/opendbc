@@ -5,7 +5,7 @@ from opendbc.car.interfaces import CarInterfaceBase
 from opendbc.car.mazda.carcontroller import CarController
 from opendbc.car.mazda.carstate import CarState
 from opendbc.car.mazda.mazda6 import Mazda6CarController, Mazda6CarState
-from opendbc.car.mazda.values import CAR, LKAS_LIMITS
+from opendbc.car.mazda.values import CAR, LKAS_LIMITS, MazdaSafetyFlags
 
 
 class CarInterface(CarInterfaceBase):
@@ -35,6 +35,8 @@ class CarInterface(CarInterfaceBase):
       ret.minSteerSpeed = LKAS_LIMITS.DISABLE_SPEED * CV.KPH_TO_MS
 
     if candidate == CAR.MAZDA_6_WAGON_2022:
+      # in CTS mode the stock ACC and camera drive the car, openpilot only steers in MRCC mode
+      ret.safetyConfigs[0].safetyParam |= MazdaSafetyFlags.STOCK_CTS.value
       # lagd learned 0.56 s of lateral delay on this car, and starts from steerActuatorDelay + 0.2 s
       ret.steerActuatorDelay = 0.36
 

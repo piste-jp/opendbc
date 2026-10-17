@@ -208,6 +208,8 @@ struct CarState {
 
   # Mazda velocity control mode: openpilot drives the stock ACC set speed with SET+/SET-
   mazdaVelocityControlMode @64 :Bool;
+  # Mazda 6: the stock ACC is in CTS mode, the stock camera steers and openpilot stays out
+  mazdaCtsMode @65 :Bool;
 
   # cruise state
   cruiseState @10 :CruiseState;

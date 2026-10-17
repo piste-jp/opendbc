@@ -77,6 +77,44 @@ class TestMazdaSafety(common.CarSafetyTest, common.DriverTorqueSteeringSafetyTes
     self.assertTrue(self._tx(self._button_msg(resume=True)))
 
 
+class TestMazdaStockCtsSafety(TestMazdaSafety):
+  SAFETY_PARAM = 1  # MAZDA_PARAM_STOCK_CTS
+
+  def _cts_mode_msg(self, cts_mode):
+    values = {"CTS_MODE": cts_mode}
+    return self.packer.make_can_msg_safety("CRZ_INFO", 0, values)
+
+  def test_stock_cts_forwards_camera_lkas(self):
+    for cts_mode in (True, False, True):
+      self._rx(self._cts_mode_msg(cts_mode))
+      for addr in (0x243, 0x440):
+        self.assertEqual(0 if cts_mode else -1, self.safety.safety_fwd_hook(2, addr))
+
+  def test_stock_cts_blocks_lkas_tx(self):
+    self.safety.set_controls_allowed(1)
+    self._rx(self._cts_mode_msg(True))
+    self.assertFalse(self._tx(self._torque_cmd_msg(0)))
+    self.assertFalse(self._tx(make_msg(0, 0x440, 8)))
+    self._rx(self._cts_mode_msg(False))
+    self.assertTrue(self._tx(self._torque_cmd_msg(0)))
+    self.assertTrue(self._tx(make_msg(0, 0x440, 8)))
+
+  def test_stock_cts_no_engage(self):
+    self._rx(self._cts_mode_msg(True))
+    self._rx(self._pcm_status_msg(True))
+    self.assertFalse(self.safety.get_controls_allowed())
+
+    # switching to MRCC while ACC stays engaged enters controls
+    self._rx(self._cts_mode_msg(False))
+    self._rx(self._pcm_status_msg(True))
+    self.assertTrue(self.safety.get_controls_allowed())
+
+    # and switching back to CTS exits them
+    self._rx(self._cts_mode_msg(True))
+    self._rx(self._pcm_status_msg(True))
+    self.assertFalse(self.safety.get_controls_allowed())
+
+
 class TestMazdaIgnition(common.SafetyTestBase):
   SAFETY_MODEL = None
 

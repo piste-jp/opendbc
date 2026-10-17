@@ -30,6 +30,7 @@ class Mazda6CarState(CarState):
     self.set_minus_button = 0
     self.prev_cruise_enabled = False
 
+    self.cts_mode = False
     self.velocity_control_mode = False
     self.cruise_speed_target_kph = 0.
 
@@ -46,6 +47,18 @@ class Mazda6CarState(CarState):
 
     ret.steerFaultTemporary = ret.steerFaultTemporary and cp.vl["ENGINE_DATA"]["SPEED"] > STEER_FAULT_MIN_SPEED_KPH
 
+    # In CTS mode the stock ACC and camera drive the car (the panda forwards the camera's LKAS commands).
+    # openpilot stays out: report cruise as unavailable so it never engages or cancels, and hide faults.
+    self.cts_mode = cp.vl["CRZ_INFO"]["CTS_MODE"] == 1
+    ret.mazdaCtsMode = self.cts_mode
+    if self.cts_mode:
+      ret.cruiseState.available = False
+      ret.cruiseState.enabled = False
+      ret.steerFaultTemporary = False
+      ret.steerFaultPermanent = False
+      ret.invalidLkasSetting = False
+      ret.lowSpeedAlert = False
+
     self.update_velocity_control(ret, cp)
     return ret
 
@@ -57,7 +70,7 @@ class Mazda6CarState(CarState):
 
     cruise = ret.cruiseState
 
-    # The mode is on while the stock ACC is on, and the next ACC on starts from a fresh target
+    # The mode is on while the stock ACC is on in MRCC mode, and the next ACC on starts from a fresh target
     self.velocity_control_mode = cruise.available
     if not cruise.available:
       self.cruise_speed_target_kph = 0.
@@ -95,6 +108,10 @@ class Mazda6CarController(CarController):
 
   def update(self, CC, CS, now_nanos):
     new_actuators, can_sends = super().update(CC, CS, now_nanos)
+
+    # the stock camera steers in CTS mode, don't send anything
+    if CS.cts_mode:
+      return new_actuators, []
 
     if self.vc_button_cooldown > 0:
       self.vc_button_cooldown -= 1

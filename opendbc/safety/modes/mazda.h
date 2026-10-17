@@ -6,6 +6,7 @@
 #define MAZDA_LKAS          0x243U
 #define MAZDA_LKAS_HUD      0x440U
 #define MAZDA_CRZ_CTRL      0x21cU
+#define MAZDA_CRZ_INFO      0x21bU
 #define MAZDA_CRZ_BTNS      0x09dU
 #define MAZDA_STEER_TORQUE  0x240U
 #define MAZDA_ENGINE_DATA   0x202U
@@ -14,6 +15,13 @@
 // CAN bus numbers
 #define MAZDA_MAIN 0
 #define MAZDA_CAM  2
+
+// Stock CTS: while the stock ACC is in CTS mode, it steers with the stock camera's LKAS commands
+// and openpilot stays out. Otherwise (MRCC mode or ACC off), openpilot steers as usual.
+#define MAZDA_PARAM_STOCK_CTS 1U
+
+static bool mazda_stock_cts_allowed = false;
+static bool mazda_stock_cts = false;
 
 // track msgs coming from OP so that we know what CAM msgs to drop and what to forward
 static void mazda_rx_hook(const CANPacket_t *msg) {
@@ -29,10 +37,14 @@ static void mazda_rx_hook(const CANPacket_t *msg) {
     update_sample(&torque_driver, torque_driver_new);
   }
 
-  // enter controls on rising edge of ACC, exit controls on ACC off
+  if (mazda_stock_cts_allowed && msg_matches(msg, MAZDA_CRZ_INFO, MAZDA_MAIN)) {
+    mazda_stock_cts = (msg->data[5] & 0x1U) != 0U;
+  }
+
+  // enter controls on rising edge of ACC, exit controls on ACC off. Never enter controls in stock CTS
   if (msg_matches(msg, MAZDA_CRZ_CTRL, MAZDA_MAIN)) {
     bool cruise_engaged = msg->data[0] & 0x8U;
-    pcm_cruise_check(cruise_engaged);
+    pcm_cruise_check(cruise_engaged && !mazda_stock_cts);
   }
 
   if (msg_matches(msg, MAZDA_ENGINE_DATA, MAZDA_MAIN)) {
@@ -66,6 +78,11 @@ static bool mazda_tx_hook(const CANPacket_t *msg) {
     }
   }
 
+  // the stock camera steers in stock CTS
+  if (mazda_stock_cts && (msg_matches(msg, MAZDA_LKAS, MAZDA_MAIN) || msg_matches(msg, MAZDA_LKAS_HUD, MAZDA_MAIN))) {
+    tx = false;
+  }
+
   // cruise buttons check
   if (msg_matches(msg, MAZDA_CRZ_BTNS, MAZDA_MAIN)) {
     // allow resume spamming while controls allowed, but
@@ -79,11 +96,28 @@ static bool mazda_tx_hook(const CANPacket_t *msg) {
   return tx;
 }
 
+static bool mazda_fwd_hook(int bus_num, int addr) {
+  bool block_msg = false;
+
+  // forward the stock camera's LKAS commands only in stock CTS
+  if ((bus_num == MAZDA_CAM) && ((addr == (int)MAZDA_LKAS) || (addr == (int)MAZDA_LKAS_HUD))) {
+    block_msg = !mazda_stock_cts;
+  }
+
+  return block_msg;
+}
+
 static safety_config mazda_init(uint16_t param) {
   static const CanMsg MAZDA_TX_MSGS[] = {
     {MAZDA_LKAS, 0, 8, .check_relay = true},
     {MAZDA_CRZ_BTNS, 0, 8, .check_relay = false},
     {MAZDA_LKAS_HUD, 0, 8, .check_relay = true},
+  };
+
+  static const CanMsg MAZDA_STOCK_CTS_TX_MSGS[] = {
+    {MAZDA_LKAS, 0, 8, .check_relay = true, .disable_static_blocking = true},
+    {MAZDA_CRZ_BTNS, 0, 8, .check_relay = false},
+    {MAZDA_LKAS_HUD, 0, 8, .check_relay = true, .disable_static_blocking = true},
   };
 
   static RxCheck mazda_rx_checks[] = {
@@ -94,12 +128,30 @@ static safety_config mazda_init(uint16_t param) {
     {.msg = {{MAZDA_PEDALS,       0, 8, 50U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
   };
 
-  SAFETY_UNUSED(param);
-  return BUILD_SAFETY_CFG(mazda_rx_checks, MAZDA_TX_MSGS);
+  static RxCheck mazda_stock_cts_rx_checks[] = {
+    {.msg = {{MAZDA_CRZ_CTRL,     0, 8, 50U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
+    {.msg = {{MAZDA_CRZ_INFO,     0, 8, 50U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
+    {.msg = {{MAZDA_CRZ_BTNS,     0, 8, 10U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
+    {.msg = {{MAZDA_STEER_TORQUE, 0, 8, 83U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
+    {.msg = {{MAZDA_ENGINE_DATA,  0, 8, 100U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
+    {.msg = {{MAZDA_PEDALS,       0, 8, 50U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
+  };
+
+  mazda_stock_cts_allowed = GET_FLAG(param, MAZDA_PARAM_STOCK_CTS);
+  mazda_stock_cts = false;
+
+  safety_config ret;
+  if (mazda_stock_cts_allowed) {
+    ret = BUILD_SAFETY_CFG(mazda_stock_cts_rx_checks, MAZDA_STOCK_CTS_TX_MSGS);
+  } else {
+    ret = BUILD_SAFETY_CFG(mazda_rx_checks, MAZDA_TX_MSGS);
+  }
+  return ret;
 }
 
 const safety_hooks mazda_hooks = {
   .init = mazda_init,
   .rx = mazda_rx_hook,
   .tx = mazda_tx_hook,
+  .fwd = mazda_fwd_hook,
 };
